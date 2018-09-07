@@ -24,7 +24,12 @@ private:
 		float x, y, z;
 		float r, g, b;
 	};
-
+	struct color {
+		float r;
+		float g;
+		float b;
+		float a;
+	};
 	float seed, size, xPosition, zPosition, distanceToCamera;
 	bool isVisible;
 	unsigned int VAO, EBO, VBO, EBO2;
@@ -33,6 +38,11 @@ private:
 	std::vector<unsigned int> indices, indices2;
 	glm::vec2 positionVector;
 	FastNoise* noise;
+	FastNoise* noise2;
+	FastNoise noise3;
+
+	std::vector<color> colors;
+
 	enum bioms 
 	{
 		grassland = 0
