@@ -22,8 +22,8 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window, float deltaTime);
 void mouse_callback(GLFWwindow* window, double mosuePositionY, double mousePositionX);
 // settings
-const unsigned int SCR_WIDTH = 1280;
-const unsigned int SCR_HEIGHT = 720;
+const unsigned int SCR_WIDTH = 1920;
+const unsigned int SCR_HEIGHT = 1080;
 
 //gloabl variables
 
@@ -103,9 +103,9 @@ int main()
 
 	//Shader Initilization
 	Shader ourShader("Shader\\basicVertexShader.txt", "Shader\\basicFragmentShader.txt");
+	std::vector<glm::vec2> chunksToGenerate;
 
-
-	worldBuilder builder(randomEngine, camera->getCameraPosition());
+	worldBuilder* builder = new worldBuilder(randomEngine, camera->getCameraPosition(), &chunksToGenerate);
 	
 	//----------------------------------------------------------------------------------------
 	//Texture Initilization
@@ -173,6 +173,8 @@ int main()
 	glm::mat4 projection;																					//projection matrix
 	projection = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 200.0f); //generating projection matrix - params: fov, ratio, near, far
 	ourShader.setMat4("projection", projection);															//does not change, so no need to set it every render call 
+	
+	std::vector<chunk> activeChunks;
 	while (!glfwWindowShouldClose(window)){
 		//std::cout << camera->getCameraPosition().x << " " << camera->getCameraPosition().y << " " << camera->getCameraPosition().z << std::endl;
 		//calculating amount of passed time since last calc
@@ -203,11 +205,19 @@ int main()
 		view = camera->getViewMatrix();
 		// pass view matrix to the shader
 		ourShader.setMat4("view", view);
-		
-		
-		glm::vec3 c = camera->getCameraPosition();
-		std::vector<chunk> activeChunks = builder.calculateVisibleChunks(glm::vec2(c.x, c.z));
-
+		for (int i = 0; i < chunksToGenerate.size(); i++) {
+			//std::cout << chunksToGenerate[i].x << " " << chunksToGenerate[i].y << std::endl;
+		}
+		if (chunksToGenerate.size() == 0) {
+			glm::vec3 c = camera->getCameraPosition();
+			activeChunks = builder->calculateVisibleChunks(glm::vec2(c.x, c.z), &chunksToGenerate);
+		}
+		else {
+			//chunksToGenerate[chunksToGenerate.size()-1].x
+			activeChunks.push_back(builder->createChunk(chunksToGenerate[chunksToGenerate.size() - 1].x, chunksToGenerate[chunksToGenerate.size() - 1].y, 40));
+			chunksToGenerate.erase(chunksToGenerate.end()-1);
+			//std::cout << chunksToGenerate.size();
+		}
 		//call to all chunks to draw their data
 		for (int i = 0; i < activeChunks.size(); i++) {
 			activeChunks[i].draw(ourShader, glm::vec2(camera->getCameraPosition().x, camera->getCameraPosition().z));
@@ -225,6 +235,7 @@ int main()
 	//----------------------------------------------------------------------------------------
 	/*glDeleteVertexArrays(1, &VAO);
 	glDeleteBuffers(1, &VBO);*/
+	delete builder;
 
 	// glfw: terminate, clearing all previously allocated GLFW resources.
 	glfwTerminate();

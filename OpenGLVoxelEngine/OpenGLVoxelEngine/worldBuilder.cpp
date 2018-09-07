@@ -6,7 +6,7 @@
 #include "DiamondSquare.h"
 #include "worldBuilder.h"
 
-worldBuilder::worldBuilder(std::default_random_engine RandomEngine, glm::vec3 cameraPosition)
+worldBuilder::worldBuilder(std::default_random_engine RandomEngine, glm::vec3 cameraPosition, std::vector<glm::vec2> *chunksToGenerate)
 {
 	//----------------------------------------------------------------------------------------
 //World Generation Setup
@@ -22,13 +22,13 @@ worldBuilder::worldBuilder(std::default_random_engine RandomEngine, glm::vec3 ca
 
 	//draw 11x11 chunks
 	//TODO: moving it to the gameloop
-	for (int i = 0; i < 3; i++) {
-		for (int j = 0; j < 3; j++) {
-			chunk c = createChunk((i - 1) * 40 * 0.4f, (j - 1) * 40 * 0.4f, genSize, randomEngine, cameraPosition);
+	for (int i = 0; i < 11; i++) {
+		for (int j = 0; j < 11; j++) {
+			chunk c = createChunk((i - 5) * 16, (j - 5) * 16, genSize);
 			activeChunks.push_back(c);			
 			//saving the chunk in the general chunk database (vector so far, probably map as best choice)
 			std::pair<std::string, chunk> a(c.getPositionString(), c);
-			std::cout << c.getPositionString() << " " << std::endl;
+			//std::cout << c.getPositionString() << " " << std::endl;
 			chunkMap.insert(a);
 		}
 	}
@@ -36,23 +36,23 @@ worldBuilder::worldBuilder(std::default_random_engine RandomEngine, glm::vec3 ca
 #pragma endregion
 }
 
-chunk worldBuilder::createChunk(int posX, int posZ, int genSize, std::default_random_engine randomEngine, glm::vec3 cameraPosition) {
-	generateHeightmap(2, genSize, randomEngine, 0, 0.0001);	//generating the heightmap - params: generation type, chunk sidelength, random number generator, amount of smoothing, roughness 
-	std::vector<float> heightmap = getHeightmap();			//receiving the heightmap
-	float lowest = 9999.9f;
-	for (int i = 0; i < heightmap.size(); i++) {
-		int value = (static_cast<int>(heightmap[i] * 10));			//whole integers are needed for y values, 10 only because otherwise the would only be mountains, due to noise algorithm
-		heightmap[i] = ((float)value);
-		if (heightmap[i] < lowest) {
-			lowest = heightmap[i];
-		}
-	}
-	chunk c(0,32, heightmap, posX, posZ, 5, lowest, cameraPosition, noise);	//generating the actual chunk - params: seed, sidelength of chunk, heightmap, xPosition, zPosition, higehst value, lowest value
-	return c;
-}
+
 
 worldBuilder::~worldBuilder()
 {
+	for (std::map<std::string,chunk>::iterator it = chunkMap.begin(); it != chunkMap.end(); ) {
+		chunk c = it->second;
+		it++;
+		c.cleanup();
+	}
+}
+
+chunk worldBuilder::createChunk(int posX, int posZ, int genSize) {
+	chunk c(0, 32, posX, posZ, &noise);	//generating the actual chunk - params: seed, sidelength of chunk, heightmap, xPosition, zPosition, higehst value, lowest value
+	std::cout << posX << " " << posZ << " " << c.getPositionString() << std::endl;
+	chunkMap.insert(std::pair<std::string, chunk>(c.getPositionString(), c));
+	//std::cout << chunkMap.size() << std::endl;
+	return c;
 }
 
 void worldBuilder::printHeightmap(unsigned int resolution) {
@@ -224,7 +224,7 @@ std::vector<float> worldBuilder::getHeightmap() {
 	return heightmap;
 }
 
-std::vector<chunk> worldBuilder::calculateVisibleChunks(glm::vec2 cameraPositionXZ) {
+std::vector<chunk> worldBuilder::calculateVisibleChunks(glm::vec2 cameraPositionXZ, std::vector<glm::vec2> *chunksToGenerate) {
 	int index = 0;
 	float distance = activeChunks[0].calculateVectorLength(cameraPositionXZ);
 	
@@ -237,18 +237,16 @@ std::vector<chunk> worldBuilder::calculateVisibleChunks(glm::vec2 cameraPosition
 	}
 	glm::vec2 currentChunkPos = activeChunks[index].getPosition();
 	activeChunks.clear();
-	for (int i = 0; i < 3; i++) {
-		for (int j = 0; j < 3; j++) {
-			glm::vec2 asa((currentChunkPos.x + (i - 1) * 40 * 0.4f), (currentChunkPos.y + (j - 1) * 40 * 0.4f));
+	for (int i = 0; i < 11; i++) {
+		for (int j = 0; j < 11; j++) {
+			glm::vec2 asa((currentChunkPos.x + (i - 5) * 16), (currentChunkPos.y + (j - 5) * 16));
 			std::string newChunkPos = "" + std::to_string(static_cast<int>(asa.x)) + std::to_string(static_cast<int>(asa.y));
 			
 			if (chunkMap.find(newChunkPos) != chunkMap.end()) {
 				activeChunks.push_back(chunkMap.find(newChunkPos)->second);
 			}
 			else {
-				chunk c = createChunk(asa.x, asa.y, 40, randomEngine, glm::vec3(cameraPositionXZ.x, 0, cameraPositionXZ.y));
-				activeChunks.push_back(c);
-				chunkMap.insert(std::pair<std::string, chunk>(c.getPositionString(), c));
+				chunksToGenerate->push_back(asa);
 			}
 		}
 	}
