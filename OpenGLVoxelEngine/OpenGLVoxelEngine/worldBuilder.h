@@ -33,7 +33,7 @@ private:
 	std::vector<chunk> activeChunks;
 	std::map<std::string, chunk> chunkMap;
 	std::default_random_engine randomEngine;
-	FastNoise noise;
+	FastNoise noise, noise2;
 	
 	void generateHeightmapRandom(unsigned int resolution);
 	void smoothHeightmap(int smoothIterations, unsigned int resolution);

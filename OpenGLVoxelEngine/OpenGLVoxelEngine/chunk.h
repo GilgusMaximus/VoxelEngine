@@ -11,7 +11,7 @@
 class chunk
 {
 public:
-	chunk(float Seed, float Size, float XPosition, float ZPOSITION, FastNoise *Noise);
+	chunk(float Seed, float Size, float XPosition, float ZPOSITION, FastNoise *Noise, FastNoise *noise2);
 	~chunk();
 	void draw(Shader shader, glm::vec2 cameraXZ);
 	bool getVisibility();
