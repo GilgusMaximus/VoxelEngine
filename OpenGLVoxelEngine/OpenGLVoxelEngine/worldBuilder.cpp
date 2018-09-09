@@ -16,15 +16,18 @@ worldBuilder::worldBuilder(std::default_random_engine RandomEngine, glm::vec3 ca
 	noise.SetNoiseType(noise.Simplex);
 	noise.SetSeed(time(nullptr));
 	noise.SetFrequency(0.004f);
+
+	noise2.SetNoiseType(noise2.Simplex);
+	noise2.SetFrequency(0.04f);
 	int genSize = 40;
 	randomEngine = RandomEngine;
 	randomEngine.seed(time(nullptr));
 
 	//draw 11x11 chunks
 	//TODO: moving it to the gameloop
-	for (int i = 0; i < 3; i++) {
-		for (int j = 0; j < 3; j++) {
-			chunk c = createChunk((i - 1) * 16, (j - 1) * 16, genSize);
+	for (int i = 0; i < 11; i++) {
+		for (int j = 0; j < 11; j++) {
+			chunk c = createChunk((i - 5) * 16, (j - 5) * 16, genSize);
 			activeChunks.push_back(c);			
 			//saving the chunk in the general chunk database (vector so far, probably map as best choice)
 			std::pair<std::string, chunk> a(c.getPositionString(), c);
@@ -36,7 +39,7 @@ worldBuilder::worldBuilder(std::default_random_engine RandomEngine, glm::vec3 ca
 #pragma endregion
 }
 
-
+bool ja = true;
 
 worldBuilder::~worldBuilder()
 {
@@ -48,7 +51,7 @@ worldBuilder::~worldBuilder()
 }
 
 chunk worldBuilder::createChunk(int posX, int posZ, int genSize) {
-	chunk c(0, 32, posX, posZ, &noise);	//generating the actual chunk - params: seed, sidelength of chunk, heightmap, xPosition, zPosition, higehst value, lowest value
+	chunk c(0, 32, posX, posZ, &noise, &noise2);	//generating the actual chunk - params: seed, sidelength of chunk, heightmap, xPosition, zPosition, higehst value, lowest value
 	//std::cout << posX << " " << posZ << " " << c.getPositionString() << std::endl;
 	chunkMap.insert(std::pair<std::string, chunk>(c.getPositionString(), c));
 	//std::cout << chunkMap.size() << std::endl;
@@ -225,10 +228,10 @@ std::vector<float> worldBuilder::getHeightmap() {
 }
 
 std::vector<chunk> worldBuilder::calculateVisibleChunks(glm::vec2 cameraPositionXZ, std::vector<glm::vec2> *chunksToGenerate) {
-	int index = 0;
+	int index = 48;
 	float distance = activeChunks[0].calculateVectorLength(cameraPositionXZ);
 	
-	for (int i = 1; i < activeChunks.size(); i++) {
+	for (int i = 49; i < 73; i++) {
 		float testDistance = activeChunks[i].calculateVectorLength(cameraPositionXZ);
 		if (testDistance < distance) {
 			distance = testDistance;
@@ -237,9 +240,9 @@ std::vector<chunk> worldBuilder::calculateVisibleChunks(glm::vec2 cameraPosition
 	}
 	glm::vec2 currentChunkPos = activeChunks[index].getPosition();
 	activeChunks.clear();
-	for (int i = 0; i < 21; i++) {
-		for (int j = 0; j < 21; j++) {
-			glm::vec2 asa((currentChunkPos.x + (i - 10) * 16), (currentChunkPos.y + (j - 10) * 16));
+	for (int i = 0; i < 11; i++) {
+		for (int j = 0; j < 11; j++) {
+			glm::vec2 asa((currentChunkPos.x + (i - 5) * 16), (currentChunkPos.y + (j - 5) * 16));
 			std::string newChunkPos = "" + std::to_string(static_cast<int>(asa.x)) + std::to_string(static_cast<int>(asa.y));
 			std::map<std::string, chunk>::iterator it = chunkMap.find(newChunkPos);
 			if ( it  != chunkMap.end()) {

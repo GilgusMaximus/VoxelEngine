@@ -2,6 +2,7 @@
 #include <GLFW/glfw3.h>
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#include <Windows.h>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -41,7 +42,12 @@ bool firstMouse = true;
 //time
 float currentFrame = 0.0f;
 float lastFrame = 0.0f;
-
+double sumOfChunkTime = 0.0f;
+int numberOfChunks = 0.0f;
+double clockToMilliseconds(clock_t ticks) {
+	// units/(units/time) => time (seconds) * 1000 = milliseconds
+	return (ticks / (double)CLOCKS_PER_SEC)*1000.0;
+}
 int main()
 {
 
@@ -104,8 +110,9 @@ int main()
 	//Shader Initilization
 	Shader ourShader("Shader\\basicVertexShader.txt", "Shader\\basicFragmentShader.txt");
 	std::vector<glm::vec2> chunksToGenerate;
-
+	
 	worldBuilder* builder = new worldBuilder(randomEngine, camera->getCameraPosition(), &chunksToGenerate);
+	
 	
 	//----------------------------------------------------------------------------------------
 	//Texture Initilization
@@ -175,9 +182,9 @@ int main()
 	ourShader.setMat4("projection", projection);															//does not change, so no need to set it every render call 
 	
 	std::vector<chunk> activeChunks;
+
 	while (!glfwWindowShouldClose(window)){
-		//std::cout << camera->getCameraPosition().x << " " << camera->getCameraPosition().y << " " << camera->getCameraPosition().z << std::endl;
-		//calculating amount of passed time since last calc
+
 		float deltaTime;
 		currentFrame = glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
@@ -191,12 +198,6 @@ int main()
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // also clear the depth buffer now!
 
-		 // bind textures on corresponding texture units
-		/*glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, texture1);
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, texture2);*/
-
 		// activate shader
 		ourShader.use();
 
@@ -205,18 +206,22 @@ int main()
 		view = camera->getViewMatrix();
 		// pass view matrix to the shader
 		ourShader.setMat4("view", view);
-		for (int i = 0; i < chunksToGenerate.size(); i++) {
-			//std::cout << chunksToGenerate[i].x << " " << chunksToGenerate[i].y << std::endl;
-		}
+
 		if (chunksToGenerate.size() == 0) {
 			glm::vec3 c = camera->getCameraPosition();
+			long int a = GetTickCount();
 			activeChunks = builder->calculateVisibleChunks(glm::vec2(c.x, c.z), &chunksToGenerate);
+			long int b = GetTickCount();
+			std::cout << "VisibleCheck: " << (b - a) << "ms" <<  std::endl;
 		}
 		else {
-			//chunksToGenerate[chunksToGenerate.size()-1].x
+			//numberOfChunks++;
+			//long int a = GetTickCount();
 			activeChunks.push_back(builder->createChunk(chunksToGenerate[chunksToGenerate.size() - 1].x, chunksToGenerate[chunksToGenerate.size() - 1].y, 40));
 			chunksToGenerate.erase(chunksToGenerate.end()-1);
-			//std::cout << chunksToGenerate.size();
+			//long int b = GetTickCount();
+			//std::cout << "ChunkGeneration: " << (b - a) << "ms" <<  std::endl;
+			//sumOfChunkTime += (b - a);
 		}
 		//call to all chunks to draw their data
 		for (int i = 0; i < activeChunks.size(); i++) {
@@ -236,9 +241,10 @@ int main()
 	/*glDeleteVertexArrays(1, &VAO);
 	glDeleteBuffers(1, &VBO);*/
 	delete builder;
-
+	std::cout << "It took at average " << (sumOfChunkTime / (double(numberOfChunks))) << "ms to generate one chunk";
 	// glfw: terminate, clearing all previously allocated GLFW resources.
 	glfwTerminate();
+	std::cin.get();
 	return 0;
 }
 
