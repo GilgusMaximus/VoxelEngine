@@ -223,9 +223,18 @@ int main()
 			//std::cout << "ChunkGeneration: " << (b - a) << "ms" <<  std::endl;
 			//sumOfChunkTime += (b - a);
 		}
+		glm::vec3 cam = camera->getCameraPosition();
+		glm::vec3 camF = camera->getCameraFront();
+		glm::vec2 a(camF.x, camF.z);
 		//call to all chunks to draw their data
 		for (int i = 0; i < activeChunks.size(); i++) {
-			activeChunks[i].draw(ourShader, glm::vec2(camera->getCameraPosition().x, camera->getCameraPosition().z));
+			glm::vec2 vecToChunk = activeChunks[i].getPosition() - glm::vec2(cam.x, cam.z);
+			double anglecos = (a.x * (activeChunks[i].getPosition().x - cam.x) + a.y * (activeChunks[i].getPosition().y - cam.z)) / (a.length() * vecToChunk.length());
+			float a = acos(anglecos);
+			//std::cout << "a : " << a << std::endl;
+			if (!(a < 160) || vecToChunk.length() < 5) {
+				activeChunks[i].draw(ourShader, glm::vec2(cam.x, cam.z));
+			}
 		}
 
 		// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
