@@ -13,6 +13,7 @@ chunk::chunk(float Seed, float Size, float XPosition, float ZPosition, FastNoise
 
 	noise2 = Noise2;
 	
+	
 
 	noise3.SetSeed(time(nullptr));
 	noise3.SetFrequency(0.1f);
@@ -70,6 +71,7 @@ void chunk::generateVertices() {
 			//positions of cube vertices are calculated through the positions of a standard cube spanend by one corner on (0,0,0) and another on (0.4,0.4,-0.4) (and the otehr 2 on teh corresponding points)
 			//on top of these coordinates translation to the right x and z position is added (bc of that the loops from -16 to 15, to make clear, which local coordinates are used)
 			
+			color actualColor;
 
 			int  actualValue		= std::round((noise->GetSimplex(j + (xPosition / 0.4f), i + (zPosition / 0.4f))*0.5f + 0.5f) * 100 + (noise2->GetSimplex(j + (xPosition / 0.4f), i + (zPosition / 0.4f))) * 6 /*+ (noise3.GetSimplex(j + (xPosition / 0.4f), i + (zPosition / 0.4f))) * 0.5f*/);
 			int  actualValueLinks	= std::round((noise->GetSimplex((j-1) + (xPosition / 0.4f), i + (zPosition / 0.4f))*0.5f + 0.5f) * 100 + (noise2->GetSimplex((j-1) + (xPosition / 0.4f), i + (zPosition / 0.4f))) * 6 /*+ (noise3.GetSimplex((j-1) + (xPosition / 0.4f), i + (zPosition / 0.4f))) * 0.5f*/);
@@ -137,22 +139,34 @@ void chunk::generateVertices() {
 				indices.push_back(6 + ((i + 20) * 40 + (j + 20)) * 8);
 				indices.push_back(4 + ((i + 20) * 40 + (j + 20)) * 8);
 			}
+			if (value <= 0.0f) {
+				actualColor = water;
+			}
+			else if (value < 15.0f) {
+				actualColor = grass;
+			}
+			else if (value < 30.0f) {
+				actualColor = stone;
+			}
+			else {
+				actualColor = snow;
+			}
 
 			//bottom front
-			vertices.push_back({ 0.0f + j * 0.4f,  heightBottom,  0.0f + i * 0.4f, 0.3, 0.7, 0.0 });
-			vertices.push_back({ 0.4f + j * 0.4f,  heightBottom,  0.0f + i * 0.4f, 0.3, 0.7, 0.0 });
+			vertices.push_back({ 0.0f + j * 0.4f,  heightBottom,  0.0f + i * 0.4f, actualColor.r, actualColor.g, actualColor.b});
+			vertices.push_back({ 0.4f + j * 0.4f,  heightBottom,  0.0f + i * 0.4f, actualColor.r, actualColor.g, actualColor.b });
 
 			//frontTiop
-			vertices.push_back({ 0.0f + j * 0.4f,  value, 0.0f + i * 0.4f, 0.3, 0.7, 0.0 });
-			vertices.push_back({ 0.4f + j * 0.4f,  value, 0.0f + i * 0.4f, 0.3, 0.7, 0.0 });
+			vertices.push_back({ 0.0f + j * 0.4f,  value, 0.0f + i * 0.4f, actualColor.r, actualColor.g, actualColor.b });
+			vertices.push_back({ 0.4f + j * 0.4f,  value, 0.0f + i * 0.4f, actualColor.r, actualColor.g, actualColor.b });
 
 			//bottom back
-			vertices.push_back({ 0.0f + j * 0.4f , heightBottom,  -0.4f + i * 0.4f, 0.5, 0.7, 0.0 });
-			vertices.push_back({ 0.4f + j * 0.4f,  heightBottom,  -0.4f + i * 0.4f, 0.5, 0.7, 0.0 });
+			vertices.push_back({ 0.0f + j * 0.4f , heightBottom,  -0.4f + i * 0.4f, actualColor.r, actualColor.g, actualColor.b });
+			vertices.push_back({ 0.4f + j * 0.4f,  heightBottom,  -0.4f + i * 0.4f, actualColor.r, actualColor.g, actualColor.b });
 
 			//backTop
-			vertices.push_back({ 0.0f + j * 0.4f, value, -0.4f + i * 0.4f, 0.5, 0.7, 0.0 });
-			vertices.push_back({ 0.4f + j * 0.4f, value, -0.4f + i * 0.4f, 0.5, 0.7, 0.0 });
+			vertices.push_back({ 0.0f + j * 0.4f, value, -0.4f + i * 0.4f, actualColor.r, actualColor.g, actualColor.b });
+			vertices.push_back({ 0.4f + j * 0.4f, value, -0.4f + i * 0.4f, actualColor.r, actualColor.g, actualColor.b });
 
 			indices.push_back(6 + ((i + 20) * 40 + (j + 20)) * 8);	//top has to be drawn in al lcases, because there are no layers of cubes, but just the cube streched to the bottom
 			indices.push_back(2 + ((i + 20) * 40 + (j + 20)) * 8);
@@ -190,7 +204,7 @@ std::string chunk::getPositionString() {
 //draw vertex buffer defined by indexbuffer
 void chunk::draw(Shader shader, glm::vec2 cameraXZ) {
 	distanceToCamera = calculateVectorLength(cameraXZ);	//calculate distance to camera
-	if (distanceToCamera < 80) {											//is the camera close enough?
+	if (distanceToCamera < 100) {											//is the camera close enough?
 		//yes -> draw it
 		isVisible = true;
 		glBindVertexArray(VAO);

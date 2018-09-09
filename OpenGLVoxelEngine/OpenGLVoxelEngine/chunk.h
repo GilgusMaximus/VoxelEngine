@@ -41,7 +41,10 @@ private:
 	FastNoise* noise2;
 	FastNoise noise3;
 
-	std::vector<color> colors;
+	color water = { 64.0f / 255.0f, 204.0f/255.0f, 255.0f/255.0f, 1 };
+	color grass = { 47.0f/255.0f, 204.0f/255.0f,   0, 1 };
+	color stone = { 150.0f/255.0f, 152.0f/255.0f, 152.0f/255.0f, 1 };
+	color snow = { 235.0f/255.0f, 255.0f/255.0f, 255.0f/255.0f, 1 };
 
 	enum bioms 
 	{
