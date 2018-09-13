@@ -7,6 +7,13 @@ The second goal is to make it as open as possible, so that it is easy to plug in
 
 The base code is based of the tutorial "learnopengl" (https://learnopengl.com) from Joey de Vries, to generate a window, 3D space, camera movement, lighting, etc.
 
+Upcoming Tasks:
+1) Rewriting chunk system using instantiation for the cube
+2) add proper lighting 
+3) Add a biome generator 
+4) Add different noise generatos for different biomes
+
+
 The base code license:
 //readable version
 https://creativecommons.org/licenses/by-nc/4.0/
