@@ -203,6 +203,8 @@ std::string chunk::getPositionString() {
 }
 //draw vertex buffer defined by indexbuffer
 void chunk::draw(Shader shader, glm::vec2 cameraXZ) {
+
+	
 	distanceToCamera = calculateVectorLength(cameraXZ);	//calculate distance to camera
 	if (distanceToCamera < 100) {											//is the camera close enough?
 		//yes -> draw it
@@ -212,6 +214,8 @@ void chunk::draw(Shader shader, glm::vec2 cameraXZ) {
 		glm::mat4 model;
 		model = glm::translate(model, glm::vec3(xPosition, 0, zPosition));
 		shader.setMat4("model", model);
+
+
 		glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 	}
 	else {

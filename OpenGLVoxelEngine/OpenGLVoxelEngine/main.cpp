@@ -1,37 +1,34 @@
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
-#include <Windows.h>
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include <iostream>
 #include <ctime>
+#include <iostream>
 #include <iomanip>
 #include <random>
+#include <Windows.h>
 
-#include "Shader.h"
 #include "Camera.h"
-#include "worldBuilder.h"
 #include "chunk.h"
 #include "FastNoise.h"
+#include "Shader.h"
+#include "worldBuilder.h"
 
+//method declarations
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window, float deltaTime);
 void mouse_callback(GLFWwindow* window, double mosuePositionY, double mousePositionX);
+
 // settings
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
 //gloabl variables
-
-//random value generator
-std::default_random_engine randomEngine;
-
-//camera
 Camera* camera = new Camera();
 
 //mouse
@@ -42,8 +39,8 @@ bool firstMouse = true;
 //time
 float currentFrame = 0.0f;
 float lastFrame = 0.0f;
-double sumOfChunkTime = 0.0f;
-int numberOfChunks = 0.0f;
+
+
 double clockToMilliseconds(clock_t ticks) {
 	// units/(units/time) => time (seconds) * 1000 = milliseconds
 	return (ticks / (double)CLOCKS_PER_SEC)*1000.0;
@@ -109,10 +106,19 @@ int main()
 
 	//Shader Initilization
 	Shader ourShader("Shader\\basicVertexShader.txt", "Shader\\basicFragmentShader.txt");
-	std::vector<glm::vec2> chunksToGenerate;
 	
-	worldBuilder* builder = new worldBuilder(randomEngine, camera->getCameraPosition(), &chunksToGenerate);
 	
+	//----------------------------------------------------------------------------------------
+	//World Setup
+	//----------------------------------------------------------------------------------------
+	#pragma region world setup
+
+	std::vector<glm::vec2>	chunksToGenerate;
+	std::vector<chunk>		activeChunks;
+	worldBuilder* builder = new worldBuilder(camera->getCameraPosition(), &chunksToGenerate);
+
+	#pragma endregion
+
 	
 	//----------------------------------------------------------------------------------------
 	//Texture Initilization
@@ -175,13 +181,21 @@ int main()
 	
 
 	//----------------------------------------------------------------------------------------
+	//Matrices Setup
+	//----------------------------------------------------------------------------------------
+	#pragma region matrices setup
+
+	//projection and view mtrices can be created here, model matrix inside chunk
+	glm::mat4 projection, view;																				//projection matrix
+	projection = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 200.0f);	//generating projection matrix - params: fov, ratio, near, far
+	ourShader.setMat4("projection", projection);															//does not change, so no need to set it every render call 
+
+	#pragma endregion
+
+	
+	//----------------------------------------------------------------------------------------
 	//RenderLoop
 	//----------------------------------------------------------------------------------------
-	glm::mat4 projection;																					//projection matrix
-	projection = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 200.0f); //generating projection matrix - params: fov, ratio, near, far
-	ourShader.setMat4("projection", projection);															//does not change, so no need to set it every render call 
-	
-	std::vector<chunk> activeChunks;
 
 	while (!glfwWindowShouldClose(window)){
 
@@ -193,7 +207,7 @@ int main()
 		// -----
 		processInput(window, deltaTime);
 		
-		// render
+		// render setup
 		// ------
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // also clear the depth buffer now!
@@ -201,39 +215,38 @@ int main()
 		// activate shader
 		ourShader.use();
 
-		// create viewMatrix
-		glm::mat4 view;
-		view = camera->getViewMatrix();
 		// pass view matrix to the shader
+		view = camera->getViewMatrix();
 		ourShader.setMat4("view", view);
 
+		//did we generate all chunks in the queue?
 		if (chunksToGenerate.size() == 0) {
+			//yes -> check, which chunks have to be drawn since we last checked
 			glm::vec3 c = camera->getCameraPosition();
-			long int a = GetTickCount();
 			activeChunks = builder->calculateVisibleChunks(glm::vec2(c.x, c.z), &chunksToGenerate);
-			long int b = GetTickCount();
-			std::cout << "VisibleCheck: " << (b - a) << "ms" <<  std::endl;
 		}
 		else {
-			//numberOfChunks++;
-			//long int a = GetTickCount();
+			//no -> no new check but generation of new chunk
 			activeChunks.push_back(builder->createChunk(chunksToGenerate[chunksToGenerate.size() - 1].x, chunksToGenerate[chunksToGenerate.size() - 1].y, 40));
 			chunksToGenerate.erase(chunksToGenerate.end()-1);
-			//long int b = GetTickCount();
-			//std::cout << "ChunkGeneration: " << (b - a) << "ms" <<  std::endl;
-			//sumOfChunkTime += (b - a);
 		}
-		glm::vec3 cam = camera->getCameraPosition();
-		glm::vec3 camF = camera->getCameraFront();
-		glm::vec2 a(camF.x, camF.z);
-		//call to all chunks to draw their data
+
+		//get the needed vectors in order to calculate chunk frustrum 
+		glm::vec3 camPositon = camera->getCameraPosition();
+		glm::vec3 camFront = camera->getCameraFront();
+		glm::vec2 camFrontXZ(camFront.x, camFront.z);
+
+		//check for every chunk whether it is within the camera view, and in case follow up draw call - everything in xz plane
 		for (int i = 0; i < activeChunks.size(); i++) {
-			glm::vec2 vecToChunk = activeChunks[i].getPosition() - glm::vec2(cam.x, cam.z);
-			double anglecos = (a.x * (activeChunks[i].getPosition().x - cam.x) + a.y * (activeChunks[i].getPosition().y - cam.z)) / (a.length() * vecToChunk.length());
-			float a = acos(anglecos);
-			//std::cout << "a : " << a << std::endl;
-			if (!(a < 160) || vecToChunk.length() < 5) {
-				activeChunks[i].draw(ourShader, glm::vec2(cam.x, cam.z));
+			//vector from camera to chunk center
+			glm::vec2 vecToChunk = activeChunks[i].getPosition() - glm::vec2(camPositon.x, camPositon.z);
+			//dot product between forward vector and vecToChunk = cos of angle between them
+			double anglecos = (camFrontXZ.x * (activeChunks[i].getPosition().x - camPositon.x) + camFrontXZ.y * (activeChunks[i].getPosition().y - camPositon.z)) / (camFrontXZ.length() * vecToChunk.length());
+			//calculate angle from cos
+			float angle = acos(anglecos);
+			//only draw the chunk if the angle is not smaller than 160, or the chunk mid is closer than 5 units 
+			if (!(angle < 160) || vecToChunk.length() < 5) {
+				activeChunks[i].draw(ourShader, glm::vec2(camPositon.x, camPositon.z));
 			}
 		}
 
@@ -247,18 +260,14 @@ int main()
 	//----------------------------------------------------------------------------------------
 	//Cleanup
 	//----------------------------------------------------------------------------------------
-	/*glDeleteVertexArrays(1, &VAO);
-	glDeleteBuffers(1, &VBO);*/
+
 	delete builder;
-	std::cout << "It took at average " << (sumOfChunkTime / (double(numberOfChunks))) << "ms to generate one chunk";
 	// glfw: terminate, clearing all previously allocated GLFW resources.
 	glfwTerminate();
-	std::cin.get();
 	return 0;
 }
 
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
-// ---------------------------------------------------------------------------------------------------------
 void processInput(GLFWwindow *window, float deltaTime)
 {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -275,7 +284,6 @@ void processInput(GLFWwindow *window, float deltaTime)
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
-// ---------------------------------------------------------------------------------------------
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
 	// make sure the viewport matches the new window dimensions; note that width and 
